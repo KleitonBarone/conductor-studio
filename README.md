@@ -1,10 +1,10 @@
-# Claude Conductor
+# Conductor Studio
 
 A task-focused UI for orchestrating multiple LLM sessions in parallel.
 
 ## What is this?
 
-Claude Conductor is a web interface that executes tasks against configurable LLM APIs to provide:
+Conductor Studio is a web interface that executes tasks against configurable LLM APIs to provide:
 
 - **Project Board** - Organize work into projects with multiple tasks
 - **Parallel Sessions** - Run multiple LLM sessions simultaneously
@@ -71,8 +71,8 @@ Set these variables before starting the app:
 
 ```bash
 # Clone the repo
-git clone https://github.com/KleitonBarone/claude-conductor.git
-cd claude-conductor
+git clone https://github.com/KleitonBarone/conductor-studio.git
+cd conductor-studio
 
 # Install runtimes and trust config
 mise trust

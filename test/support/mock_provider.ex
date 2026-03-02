@@ -1,5 +1,5 @@
-defmodule ClaudeConductor.Sessions.MockProvider do
-  @behaviour ClaudeConductor.Sessions.Provider
+defmodule ConductorStudio.Sessions.MockProvider do
+  @behaviour ConductorStudio.Sessions.Provider
 
   @impl true
   def complete(prompt, _opts) do

@@ -5,14 +5,14 @@ import Config
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
-config :claude_conductor, ClaudeConductor.Repo,
-  database: Path.expand("../claude_conductor_test.db", __DIR__),
+config :conductor_studio, ConductorStudio.Repo,
+  database: Path.expand("../conductor_studio_test.db", __DIR__),
   pool_size: 5,
   pool: Ecto.Adapters.SQL.Sandbox
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
-config :claude_conductor, ClaudeConductorWeb.Endpoint,
+config :conductor_studio, ConductorStudioWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "wPGXu4fEKhu2WPUQ0S4L6a7nvxMcqogxSpZwZk9wkEDDYMor4IYVq94m5hqrYATV",
   server: false
@@ -31,9 +31,9 @@ config :phoenix_live_view,
 config :phoenix,
   sort_verified_routes_query_params: true
 
-config :claude_conductor, :llm,
+config :conductor_studio, :llm,
   provider: "mock",
-  provider_module: ClaudeConductor.Sessions.MockProvider,
+  provider_module: ConductorStudio.Sessions.MockProvider,
   api_base: "http://localhost",
   api_key: "test-key",
   model: "test-model",

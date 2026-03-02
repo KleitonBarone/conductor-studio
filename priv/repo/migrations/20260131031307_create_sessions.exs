@@ -1,4 +1,4 @@
-defmodule ClaudeConductor.Repo.Migrations.CreateSessions do
+defmodule ConductorStudio.Repo.Migrations.CreateSessions do
   use Ecto.Migration
 
   def change do

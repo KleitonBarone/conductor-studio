@@ -1,4 +1,4 @@
-defmodule ClaudeConductor.Repo.Migrations.AddLlmMetadataToSessions do
+defmodule ConductorStudio.Repo.Migrations.AddLlmMetadataToSessions do
   use Ecto.Migration
 
   def change do

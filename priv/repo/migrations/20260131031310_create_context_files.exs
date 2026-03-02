@@ -1,4 +1,4 @@
-defmodule ClaudeConductor.Repo.Migrations.CreateContextFiles do
+defmodule ConductorStudio.Repo.Migrations.CreateContextFiles do
   use Ecto.Migration
 
   def change do

@@ -7,33 +7,33 @@
 # General application configuration
 import Config
 
-config :claude_conductor,
-  ecto_repos: [ClaudeConductor.Repo],
+config :conductor_studio,
+  ecto_repos: [ConductorStudio.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-config :claude_conductor, :llm,
+config :conductor_studio, :llm,
   provider: "openai_compatible",
-  provider_module: ClaudeConductor.Sessions.Providers.OpenAICompatible,
+  provider_module: ConductorStudio.Sessions.Providers.OpenAICompatible,
   api_base: "https://api.openai.com/v1",
   api_key: nil,
   model: "gpt-4o-mini",
   timeout_ms: 60_000
 
 # Configure the endpoint
-config :claude_conductor, ClaudeConductorWeb.Endpoint,
+config :conductor_studio, ConductorStudioWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: ClaudeConductorWeb.ErrorHTML, json: ClaudeConductorWeb.ErrorJSON],
+    formats: [html: ConductorStudioWeb.ErrorHTML, json: ConductorStudioWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: ClaudeConductor.PubSub,
+  pubsub_server: ConductorStudio.PubSub,
   live_view: [signing_salt: "vMaa5Nv8"]
 
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
-  claude_conductor: [
+  conductor_studio: [
     args:
       ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
@@ -43,7 +43,7 @@ config :esbuild,
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "4.1.12",
-  claude_conductor: [
+  conductor_studio: [
     args: ~w(
       --input=assets/css/app.css
       --output=priv/static/assets/css/app.css

@@ -1,8 +1,8 @@
 import Config
 
 # Configure your database
-config :claude_conductor, ClaudeConductor.Repo,
-  database: Path.expand("../claude_conductor_dev.db", __DIR__),
+config :conductor_studio, ConductorStudio.Repo,
+  database: Path.expand("../conductor_studio_dev.db", __DIR__),
   pool_size: 5,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true
@@ -13,7 +13,7 @@ config :claude_conductor, ClaudeConductor.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
-config :claude_conductor, ClaudeConductorWeb.Endpoint,
+config :conductor_studio, ConductorStudioWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}],
@@ -22,8 +22,8 @@ config :claude_conductor, ClaudeConductorWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "dKDbjyK+KxUlFqnxviDPFPXlE4ylAc0uWTCvp+RT3h59DDsq1BovX6gKGtRgS7Ui",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:claude_conductor, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:claude_conductor, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:conductor_studio, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:conductor_studio, ~w(--watch)]}
   ]
 
 # ## SSL Support
@@ -50,7 +50,7 @@ config :claude_conductor, ClaudeConductorWeb.Endpoint,
 # different ports.
 
 # Reload browser tabs when matching files change.
-config :claude_conductor, ClaudeConductorWeb.Endpoint,
+config :conductor_studio, ConductorStudioWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
     patterns: [
@@ -59,13 +59,13 @@ config :claude_conductor, ClaudeConductorWeb.Endpoint,
       # Gettext translations
       ~r"priv/gettext/.*\.po$"E,
       # Router, Controllers, LiveViews and LiveComponents
-      ~r"lib/claude_conductor_web/router\.ex$"E,
-      ~r"lib/claude_conductor_web/(controllers|live|components)/.*\.(ex|heex)$"E
+      ~r"lib/conductor_studio_web/router\.ex$"E,
+      ~r"lib/conductor_studio_web/(controllers|live|components)/.*\.(ex|heex)$"E
     ]
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :claude_conductor, dev_routes: true
+config :conductor_studio, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

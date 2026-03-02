@@ -1,10 +1,10 @@
-# Claude Conductor - Agent Guidelines
+# Conductor Studio - Agent Guidelines
 
-This is Claude Conductor, a Phoenix LiveView application for orchestrating multiple LLM sessions.
+This is Conductor Studio, a Phoenix LiveView application for orchestrating multiple LLM sessions.
 
 ## Project Overview
 
-Claude Conductor executes configurable LLM API requests to provide:
+Conductor Studio executes configurable LLM API requests to provide:
 - A board-style UI for managing projects and tasks
 - Parallel LLM session execution
 - Automatic context management from project files
@@ -13,13 +13,13 @@ Claude Conductor executes configurable LLM API requests to provide:
 ## Architecture
 
 ```
-ClaudeConductor (Application)
-├── ClaudeConductor.Repo              # SQLite database
-├── ClaudeConductor.Projects          # Context for projects/tasks
-├── ClaudeConductor.Sessions          # Context for LLM sessions
+ConductorStudio (Application)
+├── ConductorStudio.Repo              # SQLite database
+├── ConductorStudio.Projects          # Context for projects/tasks
+├── ConductorStudio.Sessions          # Context for LLM sessions
 │   ├── SessionSupervisor             # DynamicSupervisor for sessions
 │   └── SessionServer                 # GenServer executing LLM requests
-└── ClaudeConductorWeb                # Phoenix web layer
+└── ConductorStudioWeb                # Phoenix web layer
     ├── BoardLive                     # Main board view
     ├── ProjectLive                   # Project detail view
     └── SessionLive                   # Session detail view
@@ -41,12 +41,12 @@ ClaudeConductor (Application)
 
 ### GenServer Patterns (SessionServer)
 
-When working with `ClaudeConductor.Sessions.SessionServer`:
+When working with `ConductorStudio.Sessions.SessionServer`:
 
 ```elixir
 # Starting a session - always use DynamicSupervisor
 DynamicSupervisor.start_child(
-  ClaudeConductor.Sessions.SessionSupervisor,
+  ConductorStudio.Sessions.SessionSupervisor,
   {SessionServer, task: task, project: project}
 )
 
@@ -70,14 +70,14 @@ Session output streams to LiveView via PubSub:
 ```elixir
 # In SessionServer - broadcast output
 Phoenix.PubSub.broadcast(
-  ClaudeConductor.PubSub,
+  ConductorStudio.PubSub,
   "session:#{task_id}",
   {:session_output, output}
 )
 
 # In LiveView - subscribe and handle
 def mount(_params, _session, socket) do
-  Phoenix.PubSub.subscribe(ClaudeConductor.PubSub, "session:#{task_id}")
+  Phoenix.PubSub.subscribe(ConductorStudio.PubSub, "session:#{task_id}")
   {:ok, socket}
 end
 
@@ -98,7 +98,7 @@ Key models:
 
 ```
 lib/
-├── claude_conductor/
+├── conductor_studio/
 │   ├── projects/           # Projects context
 │   │   ├── project.ex      # Project schema
 │   │   └── task.ex         # Task schema
@@ -108,7 +108,7 @@ lib/
 │   │   └── session_supervisor.ex
 │   └── context/            # Context management
 │       └── context_file.ex
-└── claude_conductor_web/
+└── conductor_studio_web/
     └── live/
         ├── board_live.ex
         ├── project_live.ex
@@ -119,7 +119,7 @@ lib/
 
 - Use `mise run format` to format code
 - Use `mise run credo` for static analysis
-- Follow the naming: `ClaudeConductor.*` for business logic, `ClaudeConductorWeb.*` for web
+- Follow the naming: `ConductorStudio.*` for business logic, `ConductorStudioWeb.*` for web
 
 ---
 
@@ -128,7 +128,7 @@ lib/
 ## Phoenix v1.8 Guidelines
 
 - **Always** begin your LiveView templates with `<Layouts.app flash={@flash} ...>` which wraps all inner content
-- The `ClaudeConductorWeb.Layouts` module is aliased in the `claude_conductor_web.ex` file
+- The `ConductorStudioWeb.Layouts` module is aliased in the `conductor_studio_web.ex` file
 - Phoenix v1.8 moved the `<.flash_group>` component to the `Layouts` module. **Never** call `<.flash_group>` outside of `layouts.ex`
 - **Always** use the `<.icon name="hero-x-mark" class="w-5 h-5"/>` component for icons
 - **Always** use the `<.input>` component for form inputs from `core_components.ex`

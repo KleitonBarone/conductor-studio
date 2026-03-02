@@ -1,9 +1,9 @@
-defmodule ClaudeConductor.MixProject do
+defmodule ConductorStudio.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :claude_conductor,
+      app: :conductor_studio,
       version: "0.1.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -20,7 +20,7 @@ defmodule ClaudeConductor.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {ClaudeConductor.Application, []},
+      mod: {ConductorStudio.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -80,10 +80,10 @@ defmodule ClaudeConductor.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind claude_conductor", "esbuild claude_conductor"],
+      "assets.build": ["compile", "tailwind conductor_studio", "esbuild conductor_studio"],
       "assets.deploy": [
-        "tailwind claude_conductor --minify",
-        "esbuild claude_conductor --minify",
+        "tailwind conductor_studio --minify",
+        "esbuild conductor_studio --minify",
         "phx.digest"
       ],
       lint: ["format --check-formatted", "credo --strict"],

@@ -1,4 +1,4 @@
-defmodule ClaudeConductor.Repo.Migrations.CreateProjects do
+defmodule ConductorStudio.Repo.Migrations.CreateProjects do
   use Ecto.Migration
 
   def change do
