@@ -30,6 +30,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
       |> assign(:messages, [])
       |> assign(:task_form_error, nil)
       |> assign(:task_action_error, nil)
+      |> assign(:confirm_delete_task_id, nil)
       |> assign(:task_card_errors, %{})
       |> assign(:show_task_form, false)
       |> assign(:task_form, to_form(Projects.change_task(%Task{})))
@@ -113,6 +114,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
       |> assign(:selected_task, task)
       |> assign(:selected_session, session)
       |> assign(:messages, messages)
+      |> assign(:confirm_delete_task_id, nil)
       |> assign(:task_action_error, nil)
       |> update(:task_card_errors, &Map.delete(&1, task.id))
       |> assign(:streaming_content, [])
@@ -125,9 +127,27 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
      socket
      |> assign(:selected_task, nil)
      |> assign(:selected_session, nil)
+     |> assign(:confirm_delete_task_id, nil)
      |> assign(:task_action_error, nil)
      |> assign(:messages, [])
      |> assign(:streaming_content, [])}
+  end
+
+  def handle_event("request_delete_task", %{"id" => id}, socket) do
+    task = Projects.get_task!(id)
+
+    if task.status == "running" do
+      {:noreply, assign(socket, :task_action_error, "Cannot delete a running task")}
+    else
+      {:noreply,
+       socket
+       |> assign(:task_action_error, nil)
+       |> assign(:confirm_delete_task_id, task.id)}
+    end
+  end
+
+  def handle_event("cancel_delete_task", _params, socket) do
+    {:noreply, assign(socket, :confirm_delete_task_id, nil)}
   end
 
   def handle_event("run_task", %{"id" => id}, socket) do
@@ -143,6 +163,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
           |> refresh_tasks()
           |> assign(:selected_task, updated_task)
           |> assign(:selected_session, session)
+          |> assign(:confirm_delete_task_id, nil)
           |> assign(:task_action_error, nil)
           |> update(:task_card_errors, &Map.delete(&1, task.id))
           |> assign(:messages, [])
@@ -200,6 +221,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
         socket
         |> assign(:selected_task, nil)
         |> assign(:selected_session, nil)
+        |> assign(:confirm_delete_task_id, nil)
         |> assign(:task_action_error, nil)
         |> update(:task_card_errors, &Map.delete(&1, task.id))
         |> assign(:messages, [])
@@ -234,6 +256,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
      |> refresh_tasks()
      |> assign(:selected_task, selected_task)
      |> assign(:selected_session, selected_session)
+     |> assign(:confirm_delete_task_id, nil)
      |> assign(:messages, messages)
      |> assign(:streaming_content, [])}
   end
@@ -261,6 +284,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
      |> refresh_tasks()
      |> assign(:selected_task, selected_task)
      |> assign(:selected_session, selected_session)
+     |> assign(:confirm_delete_task_id, nil)
      |> assign(:task_action_error, nil)
      |> assign(:streaming_content, [])
      |> assign(:task_action_error, "Session failed: #{inspect(reason)}")}
@@ -279,6 +303,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
        |> refresh_tasks()
        |> assign(:selected_task, task)
        |> assign(:selected_session, session)
+       |> assign(:confirm_delete_task_id, nil)
        |> assign(:messages, messages)
        |> assign(:streaming_content, [])}
     else
@@ -548,12 +573,39 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
                 <button
                   :if={@selected_task.status != "running"}
                   class="btn btn-ghost btn-sm text-error"
-                  phx-click="delete_task"
+                  phx-click="request_delete_task"
                   phx-value-id={@selected_task.id}
-                  data-confirm="Delete this task?"
                 >
                   <.icon name="hero-trash" class="size-4" />
                 </button>
+              </div>
+
+              <div
+                :if={
+                  @confirm_delete_task_id == @selected_task.id && @selected_task.status != "running"
+                }
+                class="alert alert-warning py-2 text-sm"
+              >
+                <div class="flex items-center justify-between w-full gap-3">
+                  <span>Delete this task?</span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs"
+                      phx-click="cancel_delete_task"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-error btn-xs"
+                      phx-click="delete_task"
+                      phx-value-id={@selected_task.id}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div :if={@task_action_error} class="alert alert-error py-2 text-sm">

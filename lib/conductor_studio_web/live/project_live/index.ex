@@ -16,6 +16,8 @@ defmodule ConductorStudioWeb.ProjectLive.Index do
     socket =
       socket
       |> assign(:has_projects, projects != [])
+      |> assign(:confirm_delete_project_id, nil)
+      |> assign(:confirm_delete_project_name, nil)
       |> assign(:show_form, false)
       |> assign(:form, to_form(Projects.change_project(%Project{})))
       |> stream(:projects, projects)
@@ -30,7 +32,11 @@ defmodule ConductorStudioWeb.ProjectLive.Index do
 
   @impl true
   def handle_event("toggle_form", _params, socket) do
-    {:noreply, assign(socket, :show_form, !socket.assigns.show_form)}
+    {:noreply,
+     socket
+     |> assign(:confirm_delete_project_id, nil)
+     |> assign(:confirm_delete_project_name, nil)
+     |> assign(:show_form, !socket.assigns.show_form)}
   end
 
   def handle_event("validate", %{"project" => params}, socket) do
@@ -48,6 +54,8 @@ defmodule ConductorStudioWeb.ProjectLive.Index do
         socket =
           socket
           |> assign(:has_projects, true)
+          |> assign(:confirm_delete_project_id, nil)
+          |> assign(:confirm_delete_project_name, nil)
           |> assign(:show_form, false)
           |> assign(:form, to_form(Projects.change_project(%Project{})))
           |> stream_insert(:projects, Map.put(project, :task_count, 0), at: 0)
@@ -59,11 +67,40 @@ defmodule ConductorStudioWeb.ProjectLive.Index do
     end
   end
 
-  def handle_event("delete", %{"id" => id}, socket) do
+  def handle_event("request_delete_project", %{"id" => id}, socket) do
     project = Projects.get_project!(id)
-    {:ok, _} = Projects.delete_project(project)
 
-    {:noreply, stream_delete(socket, :projects, project)}
+    {:noreply,
+     socket
+     |> assign(:confirm_delete_project_id, project.id)
+     |> assign(:confirm_delete_project_name, project.name)}
+  end
+
+  def handle_event("cancel_delete_project", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:confirm_delete_project_id, nil)
+     |> assign(:confirm_delete_project_name, nil)}
+  end
+
+  def handle_event("delete", %{"id" => id}, socket) do
+    project_id = String.to_integer(id)
+
+    if socket.assigns.confirm_delete_project_id != project_id do
+      {:noreply, socket}
+    else
+      project = Projects.get_project!(project_id)
+      {:ok, _} = Projects.delete_project(project)
+
+      has_projects = Projects.list_projects() != []
+
+      {:noreply,
+       socket
+       |> assign(:confirm_delete_project_id, nil)
+       |> assign(:confirm_delete_project_name, nil)
+       |> assign(:has_projects, has_projects)
+       |> stream_delete(:projects, project)}
+    end
   end
 
   @impl true
@@ -152,15 +189,41 @@ defmodule ConductorStudioWeb.ProjectLive.Index do
               </div>
             </.link>
             <button
-              class="btn btn-ghost btn-xs btn-circle absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-error"
-              phx-click="delete"
+              id={"project-delete-#{project.id}"}
+              class="btn btn-ghost btn-xs btn-circle absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity text-error pointer-events-auto"
+              phx-click="request_delete_project"
               phx-value-id={project.id}
-              data-confirm="Delete this project and all its tasks?"
             >
               <.icon name="hero-trash" class="size-4" />
             </button>
           </div>
         </div>
+
+        <.modal
+          :if={@confirm_delete_project_id}
+          id="project-delete-modal"
+          show
+          on_cancel={JS.push("cancel_delete_project")}
+        >
+          <h3 class="font-semibold text-lg mb-2">Delete Project</h3>
+          <p class="text-sm text-base-content/80 mb-4">
+            Delete <span class="font-semibold">{@confirm_delete_project_name || "this project"}</span>
+            and all its tasks?
+          </p>
+          <div class="flex justify-end gap-2">
+            <button type="button" class="btn btn-ghost btn-sm" phx-click="cancel_delete_project">
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-error btn-sm"
+              phx-click="delete"
+              phx-value-id={@confirm_delete_project_id}
+            >
+              Delete
+            </button>
+          </div>
+        </.modal>
 
         <%!-- Empty state --%>
         <.empty_state
