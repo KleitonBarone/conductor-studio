@@ -162,6 +162,26 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
       :ok ->
         {:noreply, assign(socket, :task_action_error, nil)}
 
+      :reconciled ->
+        {selected_task, selected_session, messages} =
+          if socket.assigns.selected_task do
+            task = Projects.get_task!(socket.assigns.selected_task.id)
+            session = Sessions.get_latest_session(task.id)
+            msgs = if session, do: Sessions.list_messages(session.id), else: []
+            {task, session, msgs}
+          else
+            {nil, nil, []}
+          end
+
+        {:noreply,
+         socket
+         |> refresh_tasks()
+         |> assign(:selected_task, selected_task)
+         |> assign(:selected_session, selected_session)
+         |> assign(:messages, messages)
+         |> assign(:task_action_error, nil)
+         |> assign(:streaming_content, [])}
+
       {:error, reason} ->
         {:noreply, assign(socket, :task_action_error, "Failed to stop: #{inspect(reason)}")}
     end
@@ -219,6 +239,13 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
   end
 
   def handle_info({:session_failed, %{reason: reason}}, socket) do
+    selected_task_id = socket.assigns.selected_task && socket.assigns.selected_task.id
+
+    if selected_task_id do
+      _ = Sessions.reconcile_task_running_state(selected_task_id)
+      Process.send_after(self(), {:refresh_task_state, selected_task_id}, 100)
+    end
+
     # Reload task and session from database to get updated status
     {selected_task, selected_session} =
       if socket.assigns.selected_task do
@@ -237,6 +264,26 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
      |> assign(:task_action_error, nil)
      |> assign(:streaming_content, [])
      |> assign(:task_action_error, "Session failed: #{inspect(reason)}")}
+  end
+
+  def handle_info({:refresh_task_state, task_id}, socket) do
+    selected_task = socket.assigns.selected_task
+
+    if selected_task && selected_task.id == task_id do
+      task = Projects.get_task!(task_id)
+      session = Sessions.get_latest_session(task.id)
+      messages = if session, do: Sessions.list_messages(session.id), else: []
+
+      {:noreply,
+       socket
+       |> refresh_tasks()
+       |> assign(:selected_task, task)
+       |> assign(:selected_session, session)
+       |> assign(:messages, messages)
+       |> assign(:streaming_content, [])}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info({:message, %{role: role, content: content}}, socket) do
@@ -393,7 +440,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
               <button type="button" class="btn btn-ghost btn-sm" phx-click="close_task_form">
                 Cancel
               </button>
-              <.button class="btn-primary btn-sm">
+              <.button class="btn btn-primary btn-sm">
                 <.icon name="hero-plus" class="size-4" /> Add
               </.button>
             </div>

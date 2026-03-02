@@ -115,7 +115,7 @@ defmodule ConductorStudioWeb.ProjectLive.Index do
                 phx-debounce="300"
               />
               <div class="flex justify-end">
-                <.button class="btn-primary">
+                <.button class="btn btn-primary">
                   <.icon name="hero-check" class="size-4" /> Create Project
                 </.button>
               </div>

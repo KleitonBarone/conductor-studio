@@ -5,6 +5,8 @@ defmodule ConductorStudio.Sessions do
 
   import Ecto.Query
   alias ConductorStudio.Repo
+  alias ConductorStudio.Projects
+  alias ConductorStudio.Projects.Task
   alias ConductorStudio.Sessions.{Session, SessionMessage}
 
   # ─────────────────────────────────────────────────────────────
@@ -190,7 +192,51 @@ defmodule ConductorStudio.Sessions do
   Stop a running session gracefully.
   """
   def stop_running_session(session_id) do
-    SessionServer.stop(session_id)
+    case SessionServer.stop(session_id) do
+      :ok ->
+        :ok
+
+      {:error, :not_running} ->
+        reconcile_stale_running_state(session_id)
+    end
+  end
+
+  @doc """
+  Reconcile stale task/session state for a task marked as running.
+
+  If no active SessionServer is running for any session marked as "running",
+  all running sessions for the task are marked failed and the task is marked failed.
+  """
+  def reconcile_task_running_state(task_id) do
+    case Repo.get(Task, task_id) do
+      nil ->
+        {:error, :task_not_found}
+
+      %Task{} = task when task.status != "running" ->
+        {:ok, task}
+
+      %Task{} = task ->
+        running_sessions =
+          Session
+          |> where(task_id: ^task_id, status: "running")
+          |> Repo.all()
+
+        has_active_process = Enum.any?(running_sessions, &session_running?(&1.id))
+
+        if has_active_process do
+          {:ok, task}
+        else
+          now = DateTime.utc_now()
+
+          Session
+          |> where(task_id: ^task_id, status: "running")
+          |> Repo.update_all(
+            set: [status: "failed", exit_code: -1, finished_at: now, updated_at: now]
+          )
+
+          Projects.update_task_status(task, "failed")
+        end
+    end
   end
 
   @doc """
@@ -225,6 +271,17 @@ defmodule ConductorStudio.Sessions do
     with {:ok, session} <- create_session(attrs),
          {:ok, pid} <- run_session(session.id) do
       {:ok, session, pid}
+    end
+  end
+
+  defp reconcile_stale_running_state(session_id) do
+    case get_session(session_id) do
+      {:ok, session} ->
+        _ = reconcile_task_running_state(session.task_id)
+        :reconciled
+
+      {:error, :not_found} ->
+        {:error, :not_running}
     end
   end
 end
