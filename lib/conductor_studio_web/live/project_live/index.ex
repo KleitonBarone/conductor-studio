@@ -51,7 +51,6 @@ defmodule ConductorStudioWeb.ProjectLive.Index do
           |> assign(:show_form, false)
           |> assign(:form, to_form(Projects.change_project(%Project{})))
           |> stream_insert(:projects, Map.put(project, :task_count, 0), at: 0)
-          |> put_flash(:info, "Project created")
 
         {:noreply, socket}
 
@@ -70,7 +69,7 @@ defmodule ConductorStudioWeb.ProjectLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app>
       <div class="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
         <%!-- Header with inline form toggle --%>
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

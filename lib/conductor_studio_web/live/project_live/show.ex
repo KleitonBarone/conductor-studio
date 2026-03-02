@@ -28,6 +28,9 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
       |> assign(:selected_session, nil)
       |> assign(:streaming_content, [])
       |> assign(:messages, [])
+      |> assign(:task_form_error, nil)
+      |> assign(:task_action_error, nil)
+      |> assign(:task_card_errors, %{})
       |> assign(:show_task_form, false)
       |> assign(:task_form, to_form(Projects.change_task(%Task{})))
 
@@ -44,8 +47,24 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
   # ─────────────────────────────────────────────────────────────
 
   @impl true
-  def handle_event("toggle_task_form", _params, socket) do
-    {:noreply, assign(socket, :show_task_form, !socket.assigns.show_task_form)}
+  def handle_event("open_task_form", _params, socket) do
+    socket =
+      socket
+      |> assign(:show_task_form, true)
+      |> assign(:task_form_error, nil)
+      |> assign(:task_form, to_form(Projects.change_task(%Task{})))
+
+    {:noreply, socket}
+  end
+
+  def handle_event("close_task_form", _params, socket) do
+    socket =
+      socket
+      |> assign(:show_task_form, false)
+      |> assign(:task_form_error, nil)
+      |> assign(:task_form, to_form(Projects.change_task(%Task{})))
+
+    {:noreply, socket}
   end
 
   def handle_event("validate_task", %{"task" => params}, socket) do
@@ -54,7 +73,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
       |> Projects.change_task(params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :task_form, to_form(changeset))}
+    {:noreply, socket |> assign(:task_form_error, nil) |> assign(:task_form, to_form(changeset))}
   end
 
   def handle_event("save_task", %{"task" => params}, socket) do
@@ -65,14 +84,18 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
         socket =
           socket
           |> assign(:show_task_form, false)
+          |> assign(:task_form_error, nil)
           |> assign(:task_form, to_form(Projects.change_task(%Task{})))
           |> refresh_tasks()
-          |> put_flash(:info, "Task created")
+          |> assign(:task_action_error, nil)
 
         {:noreply, socket}
 
       {:error, changeset} ->
-        {:noreply, assign(socket, :task_form, to_form(changeset))}
+        {:noreply,
+         socket
+         |> assign(:task_form_error, "Could not create task. Check the fields and try again.")
+         |> assign(:task_form, to_form(changeset))}
     end
   end
 
@@ -90,6 +113,8 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
       |> assign(:selected_task, task)
       |> assign(:selected_session, session)
       |> assign(:messages, messages)
+      |> assign(:task_action_error, nil)
+      |> update(:task_card_errors, &Map.delete(&1, task.id))
       |> assign(:streaming_content, [])
 
     {:noreply, socket}
@@ -100,6 +125,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
      socket
      |> assign(:selected_task, nil)
      |> assign(:selected_session, nil)
+     |> assign(:task_action_error, nil)
      |> assign(:messages, [])
      |> assign(:streaming_content, [])}
   end
@@ -117,13 +143,15 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
           |> refresh_tasks()
           |> assign(:selected_task, updated_task)
           |> assign(:selected_session, session)
+          |> assign(:task_action_error, nil)
+          |> update(:task_card_errors, &Map.delete(&1, task.id))
           |> assign(:messages, [])
           |> assign(:streaming_content, [])
 
         {:noreply, socket}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to start: #{inspect(reason)}")}
+        {:noreply, assign_run_error(socket, task.id, "Failed to start: #{inspect(reason)}")}
     end
   end
 
@@ -132,10 +160,10 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
 
     case Sessions.stop_running_session(session_id) do
       :ok ->
-        {:noreply, put_flash(socket, :info, "Stopping...")}
+        {:noreply, assign(socket, :task_action_error, nil)}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Failed: #{inspect(reason)}")}
+        {:noreply, assign(socket, :task_action_error, "Failed to stop: #{inspect(reason)}")}
     end
   end
 
@@ -144,7 +172,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
 
     # Don't allow deleting running tasks
     if task.status == "running" do
-      {:noreply, put_flash(socket, :error, "Cannot delete a running task")}
+      {:noreply, assign(socket, :task_action_error, "Cannot delete a running task")}
     else
       {:ok, _} = Projects.delete_task(task)
 
@@ -152,10 +180,11 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
         socket
         |> assign(:selected_task, nil)
         |> assign(:selected_session, nil)
+        |> assign(:task_action_error, nil)
+        |> update(:task_card_errors, &Map.delete(&1, task.id))
         |> assign(:messages, [])
         |> assign(:streaming_content, [])
         |> refresh_tasks()
-        |> put_flash(:info, "Task deleted")
 
       {:noreply, socket}
     end
@@ -205,8 +234,9 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
      |> refresh_tasks()
      |> assign(:selected_task, selected_task)
      |> assign(:selected_session, selected_session)
+     |> assign(:task_action_error, nil)
      |> assign(:streaming_content, [])
-     |> put_flash(:error, "Session failed: #{inspect(reason)}")}
+     |> assign(:task_action_error, "Session failed: #{inspect(reason)}")}
   end
 
   def handle_info({:message, %{role: role, content: content}}, socket) do
@@ -285,6 +315,20 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
   defp message_class("tool"), do: "text-warning"
   defp message_class(_), do: "text-base-content"
 
+  defp assign_run_error(socket, task_id, message) do
+    socket
+    |> update(:task_card_errors, &Map.put(&1, task_id, message))
+    |> then(fn sock ->
+      selected_task = sock.assigns.selected_task
+
+      if selected_task && selected_task.id == task_id do
+        assign(sock, :task_action_error, message)
+      else
+        sock
+      end
+    end)
+  end
+
   # ─────────────────────────────────────────────────────────────
   # Render
   # ─────────────────────────────────────────────────────────────
@@ -294,7 +338,7 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
     assigns = assign(assigns, :statuses, @statuses)
 
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app>
       <div class="flex flex-col h-[calc(100vh-4rem)]">
         <%!-- Header --%>
         <div class="p-4 border-b border-base-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -308,41 +352,53 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
             </div>
           </div>
           <button
-            phx-click="toggle_task_form"
-            class={["btn btn-sm shrink-0", (@show_task_form && "btn-ghost") || "btn-primary"]}
+            phx-click="open_task_form"
+            class="btn btn-primary btn-sm shrink-0"
           >
-            <.icon name={(@show_task_form && "hero-x-mark") || "hero-plus"} class="size-4" />
-            {(@show_task_form && "Cancel") || "Add Task"}
+            <.icon name="hero-plus" class="size-4" /> Add Task
           </button>
         </div>
 
-        <%!-- Inline task form --%>
-        <div :if={@show_task_form} class="p-4 bg-base-200 border-b border-base-300">
-          <.form
-            for={@task_form}
-            phx-change="validate_task"
-            phx-submit="save_task"
-            class="flex flex-col sm:flex-row gap-2"
-          >
+        <%!-- Add task modal --%>
+        <.modal
+          :if={@show_task_form}
+          id="task-form-modal"
+          show
+          on_cancel={JS.push("close_task_form")}
+        >
+          <h3 class="font-semibold text-lg mb-4">Add Task</h3>
+
+          <div :if={@task_form_error} class="alert alert-error mb-4 py-2 text-sm">
+            {@task_form_error}
+          </div>
+
+          <.form for={@task_form} phx-change="validate_task" phx-submit="save_task" class="space-y-3">
             <.input
               field={@task_form[:title]}
               type="text"
+              label="Task title"
               placeholder="Task title"
-              class="input-sm flex-1"
               phx-debounce="200"
             />
             <.input
               field={@task_form[:prompt]}
-              type="text"
+              type="textarea"
+              label="Prompt"
               placeholder="Prompt for the LLM..."
-              class="input-sm flex-[2]"
+              rows="5"
               phx-debounce="200"
             />
-            <.button class="btn-primary btn-sm shrink-0">
-              <.icon name="hero-plus" class="size-4" /> Add
-            </.button>
+
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" class="btn btn-ghost btn-sm" phx-click="close_task_form">
+                Cancel
+              </button>
+              <.button class="btn-primary btn-sm">
+                <.icon name="hero-plus" class="size-4" /> Add
+              </.button>
+            </div>
           </.form>
-        </div>
+        </.modal>
 
         <%!-- Main content area --%>
         <div class="flex-1 flex overflow-hidden">
@@ -388,6 +444,9 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
                           :if={task.status == "running"}
                           class="loading loading-spinner loading-xs text-info"
                         />
+                      </div>
+                      <div :if={Map.get(@task_card_errors, task.id)} class="text-error text-xs mt-2">
+                        {Map.get(@task_card_errors, task.id)}
                       </div>
                     </div>
                   </div>
@@ -448,6 +507,10 @@ defmodule ConductorStudioWeb.ProjectLive.Show do
                 >
                   <.icon name="hero-trash" class="size-4" />
                 </button>
+              </div>
+
+              <div :if={@task_action_error} class="alert alert-error py-2 text-sm">
+                {@task_action_error}
               </div>
 
               <%!-- Session Output --%>
